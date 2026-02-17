@@ -1,0 +1,5 @@
+# Shared — @vibecoding/shared
+Общий пакет: Header + авторизация + Supabase-клиент. Подключается как git submodule.
+## CSS: классы с префиксом .vc-*. НЕ используй Tailwind.
+## Footer тут НЕТ — каждое приложение делает свой.
+## Supabase: zxywgueplrosvdwgpmvb, CookieStorage domain: .vibecoding.by

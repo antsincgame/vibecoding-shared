@@ -1,0 +1,16 @@
+{
+  "name": "@vibecoding/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles": "./src/styles/shared.css"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}
