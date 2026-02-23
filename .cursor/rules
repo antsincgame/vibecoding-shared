@@ -1,5 +1,15 @@
 # Shared — @vibecoding/shared
-Общий пакет: Header + авторизация + Supabase-клиент. Подключается как git submodule.
-## CSS: классы с префиксом .vc-*. НЕ используй Tailwind.
+
+Общий пакет: Header + авторизация + Supabase-клиент. Подключается как git submodule в school, freelance, bellify.
+
+## Содержимое
+- `src/auth/supabase.ts` — Supabase клиент (синглтон, CookieStorage для .vibecoding.by)
+- `src/auth/AuthProvider.tsx` — React контекст авторизации (login, register, logout, email verification)
+- `src/components/Header.tsx` — Общая шапка с мега-меню, мобильное меню, кнопки auth
+- `src/styles/shared.css` — Стили шапки (классы `.vc-*`)
+- `src/index.ts` — экспорты
+
+## CSS: ВСЕ классы с префиксом `.vc-*`. НЕ используй Tailwind — только чистый CSS.
 ## Footer тут НЕТ — каждое приложение делает свой.
-## Supabase: zxywgueplrosvdwgpmvb, CookieStorage domain: .vibecoding.by
+## Изменения влияют на ВСЕ приложения. Будь осторожен с breaking changes.
+## Supabase: zxywgueplrosvdwgpmvb, CookieStorage domain: .vibecoding.by (SSO между поддоменами)
