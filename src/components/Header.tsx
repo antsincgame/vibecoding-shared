@@ -87,9 +87,7 @@ export default function Header({
         <nav className="vc-header-nav">
           {/* Logo */}
           <Link to={logoTo} className="vc-header-logo">
-            <span className="neon-text glitch" data-text={logoText}>
-              {logoText}
-            </span>
+            {logoImage ? <img src={logoImage} alt={logoText} style={{height:'40px'}} /> : <span className="neon-text glitch" data-text={logoText}>{logoText}</span>}
           </Link>
 
           {/* Desktop */}
