@@ -41,6 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initAuth = async () => {
       try {
+        // If there is a PKCE code in URL, wait for onAuthStateChange to handle it
+        const hasCode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('code');
+        if (hasCode) return;
         const { data } = await supabase.auth.getSession();
         if (mounted) {
           if (data.session?.user) {
