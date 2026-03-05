@@ -26,6 +26,7 @@ export interface MegaMenuCategory {
 
 export interface HeaderConfig {
   logoText: string;
+  logoImage?: string;
   logoTo?: string;
   navLinks?: NavLink[];
   megaMenu?: MegaMenuCategory[];
@@ -41,6 +42,7 @@ export interface HeaderConfig {
 
 export default function Header({
   logoText,
+  logoImage,
   logoTo = '/',
   navLinks,
   megaMenu,
