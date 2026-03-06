@@ -81,6 +81,7 @@ export default function Header({
   const activeCat = megaMenu?.find((c) => c.slug === activeMega);
   const isAdmin = profile?.role === 'admin';
   const isTeacher = profile?.role === 'teacher';
+  const isModerator = profile?.role === 'moderator';
   const displayName = profile?.full_name || user?.email || 'Профиль';
 
   return (
@@ -146,7 +147,7 @@ export default function Header({
             {/* Extra links (admin, teacher) */}
             {extraLinks?.map((link) => {
               if (link.label === 'Работы учеников' && !(isAdmin || isTeacher)) return null;
-              if (link.label === 'Админка' && !isAdmin) return null;
+              if (link.label === 'Админка' && !(isAdmin || isModerator)) return null;
               return (
                 <Link key={link.to} to={link.to} className="vc-nav-link" style={link.style}>
                   {link.label}
