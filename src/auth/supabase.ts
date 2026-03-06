@@ -42,6 +42,7 @@ class AppwriteQueryBuilder {
   private _updateData: any = null;
   private _deleteMode = false;
   private _upsertData: any = null;
+  private _upsertConflict: string = 'id';
 
   constructor(collection: string) { this.collection = collection; }
 
@@ -52,7 +53,7 @@ class AppwriteQueryBuilder {
 
   insert(data: any) { this._insertData = Array.isArray(data) ? data : [data]; return this; }
   update(data: any) { this._updateData = data; return this; }
-  upsert(data: any) { this._upsertData = Array.isArray(data) ? data : [data]; return this; }
+  upsert(data: any, opts?: { onConflict?: string }) { this._upsertData = Array.isArray(data) ? data : [data]; this._upsertConflict = opts?.onConflict || 'id'; return this; }
   delete() { this._deleteMode = true; return this; }
 
   eq(field: string, value: any) { this.queries.push({ type: 'eq', field, value }); return this; }
@@ -148,14 +149,35 @@ class AppwriteQueryBuilder {
       if (this._upsertData) {
         const results = [];
         for (const item of this._upsertData) {
-          const docId = item.id || ID.unique();
           const clean: any = {};
           for (const [k, v] of Object.entries(item)) {
             if (k === 'id' || v === undefined) continue;
             clean[k] = Array.isArray(v) ? JSON.stringify(v) : v;
           }
-          try { const doc = await db.updateDocument(DB_ID, this.collection, docId, clean); results.push(this.docToRow(doc)); }
-          catch { const doc = await db.createDocument(DB_ID, this.collection, docId, clean); results.push(this.docToRow(doc)); }
+          try {
+            // Try to find existing doc by conflict field
+            const conflictField = this._upsertConflict;
+            const conflictValue = item[conflictField];
+            if (conflictField !== 'id' && conflictValue) {
+              const existing = await db.listDocuments(DB_ID, this.collection, [Query.equal(conflictField, conflictValue), Query.limit(1)]);
+              if (existing.documents.length > 0) {
+                const doc = await db.updateDocument(DB_ID, this.collection, existing.documents[0].$id, clean);
+                results.push(this.docToRow(doc));
+                continue;
+              }
+            }
+            // Try update by id
+            const docId = item.id || ID.unique();
+            try {
+              const doc = await db.updateDocument(DB_ID, this.collection, docId, clean);
+              results.push(this.docToRow(doc));
+            } catch {
+              const doc = await db.createDocument(DB_ID, this.collection, docId, clean);
+              results.push(this.docToRow(doc));
+            }
+          } catch (e: any) {
+            return { data: null, error: { message: e.message, code: e.code } };
+          }
         }
         return { data: results.length === 1 ? results[0] : results, error: null };
       }
