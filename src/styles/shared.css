@@ -158,14 +158,13 @@
   position: fixed;
   inset: 0;
   z-index: 98;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.3);
 }
 .vc-mega-dropdown {
   position: absolute;
   left: 0; right: 0;
   background: rgba(10,10,20,0.98);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
   border-top: 1px solid rgba(0,255,249,0.15);
   border-bottom: 1px solid rgba(0,255,249,0.15);
   box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(0,255,249,0.1);
