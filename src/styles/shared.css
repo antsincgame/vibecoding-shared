@@ -103,6 +103,18 @@
   box-shadow: 0 0 15px rgba(0, 255, 249, 0.3);
 }
 
+.vc-signup-btn {
+  background: rgba(29, 191, 115, 0.1) !important;
+  border: 1px solid #1dbf73 !important;
+  color: #1dbf73 !important;
+}
+.vc-signup-btn:hover {
+  background: rgba(29, 191, 115, 0.2) !important;
+  box-shadow: 0 0 15px rgba(29, 191, 115, 0.3);
+  color: #1dbf73 !important;
+  text-shadow: 0 0 10px rgba(29, 191, 115, 0.5);
+}
+
 .vc-telegram {
   color: #0088cc !important;
   padding: 8px !important;
@@ -327,6 +339,15 @@
     border-radius: 4px;
     margin-top: 10px;
     text-align: center;
+  }
+  .vc-mobile-signup {
+    background: rgba(29, 191, 115, 0.1) !important;
+    border: 1px solid #1dbf73 !important;
+    color: #1dbf73 !important;
+  }
+  .vc-mobile-signup:hover {
+    background: rgba(29, 191, 115, 0.2) !important;
+    color: #1dbf73 !important;
   }
 }
 

@@ -34,6 +34,7 @@ export interface HeaderConfig {
   searchPlaceholder?: string;
   telegramLink?: string;
   loginPath?: string;
+  signupPath?: string;
   profilePath?: string;
   extraLinks?: NavLink[];
 }
@@ -50,6 +51,7 @@ export default function Header({
   searchPlaceholder = 'Найти услуги',
   telegramLink,
   loginPath = '/auth',
+  signupPath = '/auth?tab=signup',
   profilePath = '/dashboard',
   extraLinks,
 }: HeaderConfig) {
@@ -168,7 +170,10 @@ export default function Header({
             {user ? (
               <Link to={profilePath} className="vc-nav-link vc-auth-btn">{displayName}</Link>
             ) : (
-              <Link to={loginPath} className="vc-nav-link vc-auth-btn">Вход</Link>
+              <>
+                <Link to={loginPath} className="vc-nav-link vc-auth-btn">Вход</Link>
+                <Link to={signupPath} className="vc-nav-link vc-auth-btn vc-signup-btn">Регистрация</Link>
+              </>
             )}
           </div>
 
@@ -267,13 +272,22 @@ export default function Header({
               {displayName}
             </Link>
           ) : (
-            <Link
-              to={loginPath}
-              className="vc-mobile-link vc-mobile-auth"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Вход
-            </Link>
+            <>
+              <Link
+                to={loginPath}
+                className="vc-mobile-link vc-mobile-auth"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Вход
+              </Link>
+              <Link
+                to={signupPath}
+                className="vc-mobile-link vc-mobile-auth vc-mobile-signup"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Регистрация
+              </Link>
+            </>
           )}
         </div>
       </header>
