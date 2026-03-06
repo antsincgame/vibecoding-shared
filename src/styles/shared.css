@@ -154,12 +154,6 @@
 }
 
 /* Mega dropdown */
-.vc-mega-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 98;
-  background: rgba(0,0,0,0.3);
-}
 .vc-mega-dropdown {
   position: absolute;
   left: 0; right: 0;
@@ -285,7 +279,7 @@
 @media (max-width: 48rem) {
   .vc-burger { display: flex; }
   .vc-nav-desktop { display: none; }
-  .vc-mega-dropdown, .vc-mega-overlay { display: none; }
+  .vc-mega-dropdown { display: none; }
 
   .vc-mobile-overlay {
     display: block;

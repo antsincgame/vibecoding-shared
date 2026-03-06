@@ -191,39 +191,36 @@ export default function Header({
 
         {/* Mega dropdown */}
         {activeCat && (
-          <>
-            <div className="vc-mega-overlay" onClick={() => setActiveMega(null)} />
-            <div
-              className="vc-mega-dropdown"
-              onMouseEnter={() => { clearTimeout(timeoutRef.current); setActiveMega(activeCat.slug); }}
-              onMouseLeave={handleMegaLeave}
-            >
-              <div className="vc-mega-inner">
-                <div className="vc-mega-grid">
-                  {activeCat.sections.map((section) => (
-                    <div key={section.title} className="vc-mega-section">
-                      <h4 className="vc-mega-title">{section.title}</h4>
-                      <ul className="vc-mega-list">
-                        {section.items.map((item) => (
-                          <li key={item.slug}>
-                            <Link
-                              to={`/categories/${item.slug}`}
-                              className="vc-mega-link"
-                              onClick={() => setActiveMega(null)}
-                            >
-                              <span>{item.label}</span>
-                              {item.isNew && <span className="vc-badge-new">new</span>}
-                              {item.isHot && <Flame size={12} className="vc-badge-hot" />}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
+          <div
+            className="vc-mega-dropdown"
+            onMouseEnter={() => { clearTimeout(timeoutRef.current); setActiveMega(activeCat.slug); }}
+            onMouseLeave={handleMegaLeave}
+          >
+            <div className="vc-mega-inner">
+              <div className="vc-mega-grid">
+                {activeCat.sections.map((section) => (
+                  <div key={section.title} className="vc-mega-section">
+                    <h4 className="vc-mega-title">{section.title}</h4>
+                    <ul className="vc-mega-list">
+                      {section.items.map((item) => (
+                        <li key={item.slug}>
+                          <Link
+                            to={`/categories/${item.slug}`}
+                            className="vc-mega-link"
+                            onClick={() => setActiveMega(null)}
+                          >
+                            <span>{item.label}</span>
+                            {item.isNew && <span className="vc-badge-new">new</span>}
+                            {item.isHot && <Flame size={12} className="vc-badge-hot" />}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {/* Mobile overlay */}
