@@ -1,27 +1,41 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+/**
+ * Shared Appwrite client — replaces shared/auth/supabase.ts
+ * Exports getSupabase() for backward compatibility (returns supabase-like wrapper)
+ */
+import { Client, Account, Databases, Storage, Query, ID } from 'appwrite';
 
-let supabaseInstance: SupabaseClient | null = null;
+let clientInstance: Client | null = null;
+let accountInstance: Account | null = null;
 
-export function getSupabase(): SupabaseClient {
-  if (supabaseInstance) return supabaseInstance;
-
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
+export function getAppwriteClient(): Client {
+  if (clientInstance) return clientInstance;
+  
+  const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT;
+  const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID;
+  
+  if (!endpoint || !projectId) {
+    throw new Error('Missing VITE_APPWRITE_ENDPOINT or VITE_APPWRITE_PROJECT_ID');
   }
-
-  supabaseInstance = createClient(url, key, {
-    auth: {
-      detectSessionInUrl: true,
-      autoRefreshToken: true,
-      persistSession: true,
-      flowType: 'pkce',
-    },
-  });
-
-  return supabaseInstance;
+  
+  clientInstance = new Client().setEndpoint(endpoint).setProject(projectId);
+  return clientInstance;
 }
 
-export { type SupabaseClient };
+export function getAccount(): Account {
+  if (accountInstance) return accountInstance;
+  accountInstance = new Account(getAppwriteClient());
+  return accountInstance;
+}
+
+// Backward-compatible export (shared AuthProvider imports getSupabase)
+// Returns the supabase-like wrapper from the school's lib/supabase.ts
+// In practice, the shared AuthProvider should be updated to use Appwrite directly
+export function getSupabase() {
+  // This is a minimal shim — the AuthProvider is rewritten to use Appwrite directly
+  return {
+    client: getAppwriteClient(),
+    account: getAccount(),
+  };
+}
+
+export { type Client, type Account };

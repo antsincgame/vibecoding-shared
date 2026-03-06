@@ -1,6 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { User, AuthError } from '@supabase/supabase-js';
-import { getSupabase } from './supabase';
+import { Client, Account, Databases, Query, ID } from 'appwrite';
+
+const ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://appwrite.vibecoding.by/v1';
+const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || '69aa2114000211b48e63';
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || 'vibecoding';
+const API_URL = import.meta.env.VITE_API_URL || 'https://vibecoding.by/functions/v1';
+
+const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID);
+const account = new Account(client);
+const databases = new Databases(client);
 
 export interface Profile {
   id: string;
@@ -12,15 +20,21 @@ export interface Profile {
   updated_at: string;
 }
 
+interface AppwriteUser {
+  id: string;
+  email: string;
+  user_metadata: { full_name: string };
+}
+
 export interface AuthContextType {
-  user: User | null;
+  user: AppwriteUser | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   sendVerificationEmail: (email: string, fullName: string) => Promise<{ error: Error | null }>;
   verifyEmailAndCreateUser: (token: string, email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signInWithGoogle: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   sendPasswordResetEmail: (email: string) => Promise<{ error: Error | null }>;
@@ -31,8 +45,7 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = getSupabase();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppwriteUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -41,66 +54,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initAuth = async () => {
       try {
-        // If there is a PKCE code in URL, wait for onAuthStateChange to handle it
-        const hasCode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('code');
-        if (hasCode) return;
-        const { data } = await supabase.auth.getSession();
+        const acc = await account.get();
         if (mounted) {
-          if (data.session?.user) {
-            setUser(data.session.user);
-            await loadProfile(data.session.user.id);
-          } else {
-            setUser(null);
-            setLoading(false);
-          }
+          const u = { id: acc.$id, email: acc.email, user_metadata: { full_name: acc.name } };
+          setUser(u);
+          await loadProfile(acc.$id);
         }
       } catch {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
       }
     };
 
     initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      (async () => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadProfile(session.user.id);
-        } else {
-          const hasCode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('code');
-          if (!hasCode) {
-            setProfile(null);
-            setLoading(false);
-          }
-        }
-      })();
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => { mounted = false; };
   }, []);
 
   const loadProfile = async (userId: string, retries = 5) => {
     for (let i = 0; i < retries; i++) {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (error) throw error;
-        if (data) {
-          setProfile(data);
-          setLoading(false);
-          return;
-        }
-        await new Promise(r => setTimeout(r, 500));
+        const doc = await databases.getDocument(DATABASE_ID, 'profiles', userId);
+        setProfile({
+          id: doc.$id,
+          email: doc.email,
+          full_name: doc.full_name,
+          avatar_url: doc.avatar_url,
+          role: doc.role,
+          created_at: doc.created_at,
+          updated_at: doc.updated_at,
+        });
+        setLoading(false);
+        return;
       } catch {
-        // retry
+        await new Promise(r => setTimeout(r, 500));
       }
     }
     setProfile(null);
@@ -109,29 +97,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-          emailRedirectTo: `${window.location.origin}/student/confirm`,
-        },
-      });
-      return { error };
-    } catch (error) {
-      return { error: error as AuthError };
+      await account.create(ID.unique(), email, password, fullName);
+      await account.createEmailPasswordSession(email, password);
+      const acc = await account.get();
+      setUser({ id: acc.$id, email: acc.email, user_metadata: { full_name: acc.name } });
+      await loadProfile(acc.$id);
+      return { error: null };
+    } catch (e: any) {
+      return { error: { message: e.message } };
     }
   };
 
   const sendVerificationEmail = async (email: string, fullName: string) => {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/send-verification-email`, {
+      const res = await fetch(`${API_URL}/send-verification-email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, fullName, siteUrl: window.location.origin }),
       });
       const data = await res.json();
@@ -144,13 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyEmailAndCreateUser = async (token: string, email: string, password: string, fullName: string) => {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/verify-email`, {
+      const res = await fetch(`${API_URL}/verify-email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, email, password, fullName }),
       });
       const data = await res.json();
@@ -163,13 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const sendPasswordResetEmail = async (email: string) => {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/send-password-reset`, {
+      const res = await fetch(`${API_URL}/send-password-reset`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, siteUrl: window.location.origin }),
       });
       const data = await res.json();
@@ -182,13 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyResetToken = async (token: string, email: string) => {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/verify-reset-token`, {
+      const res = await fetch(`${API_URL}/verify-reset-token`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, email }),
       });
       const data = await res.json();
@@ -201,13 +170,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (token: string, email: string, newPassword: string) => {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
+      const res = await fetch(`${API_URL}/reset-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, email, newPassword }),
       });
       const data = await res.json();
@@ -220,32 +185,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error };
-    } catch (error) {
-      return { error: error as AuthError };
+      await account.createEmailPasswordSession(email, password);
+      const acc = await account.get();
+      const u = { id: acc.$id, email: acc.email, user_metadata: { full_name: acc.name } };
+      setUser(u);
+      await loadProfile(acc.$id);
+      return { error: null };
+    } catch (e: any) {
+      return { error: { message: e.message } };
     }
   };
 
   const signInWithGoogle = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: { access_type: 'offline', prompt: 'select_account' },
-        },
-      });
-      if (error) return { error };
-      if (data?.url) window.location.href = data.url;
-      return { error };
-    } catch (error) {
-      return { error: error as AuthError };
+      account.createOAuth2Session(
+        'google' as any,
+        `${window.location.origin}/auth/callback`,
+        `${window.location.origin}/login`
+      );
+      return { error: null };
+    } catch (e: any) {
+      return { error: { message: e.message } };
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await account.deleteSession('current');
+    } catch {}
     setUser(null);
     setProfile(null);
   };
@@ -253,12 +220,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return { error: new Error('No user') };
     try {
-      const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
-      if (error) throw error;
+      const clean: any = {};
+      for (const [k, v] of Object.entries(updates)) {
+        if (v !== undefined && k !== 'id') clean[k] = v;
+      }
+      await databases.updateDocument(DATABASE_ID, 'profiles', user.id, clean);
       await loadProfile(user.id);
       return { error: null };
-    } catch (error) {
-      return { error: error as Error };
+    } catch (e: any) {
+      return { error: new Error(e.message) };
     }
   };
 
