@@ -26,7 +26,7 @@ export function getAccount(): Account {
   return account;
 }
 
-interface SupabaseResponse<T = any> {
+interface AppwriteResponse<T = any> {
   data: T | null;
   error: any | null;
   count?: number | null;
@@ -83,8 +83,8 @@ class AppwriteQueryBuilder {
     return this;
   }
 
-  single(): Promise<SupabaseResponse> { this._single = true; return this.execute(); }
-  maybeSingle(): Promise<SupabaseResponse> { this._maybeSingle = true; return this.execute(); }
+  single(): Promise<AppwriteResponse> { this._single = true; return this.execute(); }
+  maybeSingle(): Promise<AppwriteResponse> { this._maybeSingle = true; return this.execute(); }
 
   private buildQueries(): string[] {
     const aq: string[] = [];
@@ -129,7 +129,7 @@ class AppwriteQueryBuilder {
     return row;
   }
 
-  private async execute(): Promise<SupabaseResponse> {
+  private async execute(): Promise<AppwriteResponse> {
     try {
       const db = getDatabases();
 
@@ -243,7 +243,7 @@ class AppwriteQueryBuilder {
     }
   }
 
-  then(resolve?: (v: SupabaseResponse) => any, reject?: (e: any) => any): Promise<any> {
+  then(resolve?: (v: AppwriteResponse) => any, reject?: (e: any) => any): Promise<any> {
     return this.execute().then(resolve, reject);
   }
   catch(fn: (e: any) => any) { return this.execute().catch(fn); }
@@ -337,16 +337,16 @@ const storageCompat = {
   listBuckets: async () => ({ data: [], error: null }),
 };
 
-interface SupabaseCompat {
+interface AppwriteCompat {
   from: (table: string) => AppwriteQueryBuilder;
   auth: typeof authCompat;
   storage: typeof storageCompat;
-  rpc: (fn: string, params?: any) => Promise<SupabaseResponse>;
+  rpc: (fn: string, params?: any) => Promise<AppwriteResponse>;
 }
 
-let instance: SupabaseCompat | null = null;
+let instance: AppwriteCompat | null = null;
 
-export function getSupabase(): SupabaseCompat {
+export function getAppwrite(): AppwriteCompat {
   if (instance) return instance;
   instance = {
     from: (table: string) => new AppwriteQueryBuilder(table),
@@ -361,4 +361,4 @@ export async function restoreCrossDomainSession(): Promise<boolean> {
   return !!(await getSessionFromAccount());
 }
 
-export type SupabaseClient = SupabaseCompat;
+export type AppwriteClient = AppwriteCompat;

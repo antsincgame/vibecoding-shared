@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { getSupabase, getAccount, restoreCrossDomainSession } from './supabase';
+import { getAppwrite, getAccount, restoreCrossDomainSession } from './appwrite';
 
 export interface Profile {
   id: string;
@@ -30,7 +30,7 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = getSupabase();
+  const db = getAppwrite();
   const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       try {
         await restoreCrossDomainSession();
-        const { data } = await supabase.auth.getSession();
+        const { data } = await db.auth.getSession();
         if (mounted) {
           if (data.session?.user) {
             setUser(data.session.user);
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
     initAuth();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
+    const { data: { subscription } } = db.auth.onAuthStateChange((_event: string, session: any) => {
       if (!mounted) return;
       (async () => {
         setUser(session?.user ?? null);
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const acc = getAccount();
         const awUser = await acc.get();
-        const { data } = await supabase.from('profiles').select('*').eq('email', awUser.email).maybeSingle();
+        const { data } = await db.from('profiles').select('*').eq('email', awUser.email).maybeSingle();
         if (data) { setProfile(data); setLoading(false); return; }
         await new Promise(r => setTimeout(r, 500 + i * 200));
       } catch { await new Promise(r => setTimeout(r, 500)); }
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const acc = getAccount();
       const awUser = await acc.get();
-      const { data } = await supabase.from('profiles').insert({
+      const { data } = await db.from('profiles').insert({
         email: awUser.email,
         full_name: awUser.name || awUser.email.split('@')[0],
         role: 'student',
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    const { error } = await db.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
     return { error };
   };
 
@@ -143,12 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await db.auth.signInWithPassword({ email, password });
     return { error };
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await db.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + '/auth/callback' },
     });
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     setUser(null);
     setProfile(null);
   };
@@ -166,9 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const acc = getAccount();
       const awUser = await acc.get();
-      const { data: existing } = await supabase.from('profiles').select('*').eq('email', awUser.email).maybeSingle();
+      const { data: existing } = await db.from('profiles').select('*').eq('email', awUser.email).maybeSingle();
       if (existing) {
-        const { error } = await supabase.from('profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', existing.id);
+        const { error } = await db.from('profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', existing.id);
         if (error) throw error;
         await loadProfile();
       }
