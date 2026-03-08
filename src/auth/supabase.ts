@@ -114,6 +114,8 @@ class AppwriteQueryBuilder {
 
   private docToRow(doc: any): any {
     const row: any = { id: doc.$id };
+    if (doc.$createdAt) row.created_at = doc.$createdAt;
+    if (doc.$updatedAt) row.updated_at = doc.$updatedAt;
     for (const [k, v] of Object.entries(doc)) {
       if (k.startsWith("$")) continue;
       if (typeof v === "string" && v.length > 1) {
