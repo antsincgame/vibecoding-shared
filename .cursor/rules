@@ -1,15 +1,17 @@
 # Shared — @vibecoding/shared
 
-Общий пакет: Header + авторизация + Supabase-клиент. Подключается как git submodule в school, freelance, bellify.
+Общий пакет: Header + авторизация + Appwrite-клиент. Подключается как git submodule в school, freelance, bellify.
 
 ## Содержимое
-- `src/auth/supabase.ts` — Supabase клиент (синглтон, CookieStorage для .vibecoding.by)
+- `src/auth/appwrite.ts` — Appwrite клиент с Supabase-совместимым API (query builder .from(), .eq(), .single() и т.д.)
 - `src/auth/AuthProvider.tsx` — React контекст авторизации (login, register, logout, email verification)
 - `src/components/Header.tsx` — Общая шапка с мега-меню, мобильное меню, кнопки auth
 - `src/styles/shared.css` — Стили шапки (классы `.vc-*`)
 - `src/index.ts` — экспорты
 
+## БД: Appwrite (endpoint: appwrite.vibecoding.by/v1, project: 69aa2114000211b48e63, DB: vibecoding)
+## Auth: Appwrite Account (email/password + Google OAuth), сессии через cookies domain .vibecoding.by (SSO между поддоменами)
 ## CSS: ВСЕ классы с префиксом `.vc-*`. НЕ используй Tailwind — только чистый CSS.
 ## Footer тут НЕТ — каждое приложение делает свой.
 ## Изменения влияют на ВСЕ приложения. Будь осторожен с breaking changes.
-## Supabase: zxywgueplrosvdwgpmvb, CookieStorage domain: .vibecoding.by (SSO между поддоменами)
+## НЕ используй Supabase — проект полностью на Appwrite.
