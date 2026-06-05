@@ -5,6 +5,22 @@ let databases: Databases | null = null;
 let account: Account | null = null;
 const DB_ID = 'vibecoding';
 
+// Маркер «у браузера может быть живая сессия Appwrite».
+// Без него гость не дёргает /v1/account на старте — иначе каждый заход
+// сыпал 401 в консоль (PSI Best Practices режет балл за ошибки консоли).
+const SESSION_HINT_KEY = 'vc-aw-session';
+
+function hasSessionHint(): boolean {
+  try { return localStorage.getItem(SESSION_HINT_KEY) === '1'; } catch { return false; }
+}
+
+function setSessionHint(active: boolean): void {
+  try {
+    if (active) localStorage.setItem(SESSION_HINT_KEY, '1');
+    else localStorage.removeItem(SESSION_HINT_KEY);
+  } catch { /* приватный режим — работаем без оптимизации */ }
+}
+
 function getClient(): Client {
   if (client) return client;
   const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT;
@@ -262,8 +278,17 @@ async function getSessionFromAccount(): Promise<any> {
       access_token: 'appwrite-session',
       refresh_token: 'appwrite-session',
     };
+    setSessionHint(true);
     return currentSession;
-  } catch { currentSession = null; return null; }
+  } catch { setSessionHint(false); currentSession = null; return null; }
+}
+
+// Тихая проверка для старта приложения: без маркера в /v1/account не ходим вообще,
+// чтобы у гостя не было 401 в консоли. Активные пути (логин, OAuth-возврат,
+// refreshSession) используют getSessionFromAccount напрямую.
+async function probeSessionFromAccount(): Promise<any> {
+  if (!hasSessionHint()) { currentSession = null; return null; }
+  return getSessionFromAccount();
 }
 
 function notifyAuthListeners(event: string) {
@@ -271,14 +296,14 @@ function notifyAuthListeners(event: string) {
 }
 
 const authCompat = {
-  getSession: async () => ({ data: { session: await getSessionFromAccount() }, error: null }),
+  getSession: async () => ({ data: { session: await probeSessionFromAccount() }, error: null }),
   getUser: async () => {
-    const s = await getSessionFromAccount();
+    const s = await probeSessionFromAccount();
     return { data: { user: s?.user || null }, error: null };
   },
   onAuthStateChange: (callback: AuthListener) => {
     authListeners.push(callback);
-    getSessionFromAccount().then(() => callback(currentSession ? 'SIGNED_IN' : 'SIGNED_OUT', currentSession));
+    probeSessionFromAccount().then(() => callback(currentSession ? 'SIGNED_IN' : 'SIGNED_OUT', currentSession));
     return { data: { subscription: { unsubscribe: () => {
       const i = authListeners.indexOf(callback); if (i >= 0) authListeners.splice(i, 1);
     }}}};
@@ -296,7 +321,15 @@ const authCompat = {
   signInWithPassword: async ({ email, password }: any) => {
     try {
       const acc = getAccount();
-      await acc.createEmailPasswordSession(email, password);
+      try {
+        await acc.createEmailPasswordSession(email, password);
+      } catch (e: any) {
+        // Старая сессия жива (например, маркер был утерян) — пересоздаём под введённые креды
+        if (e?.type === 'user_session_already_exists') {
+          await acc.deleteSession('current');
+          await acc.createEmailPasswordSession(email, password);
+        } else { throw e; }
+      }
       await getSessionFromAccount();
       notifyAuthListeners('SIGNED_IN');
       return { error: null };
@@ -310,6 +343,8 @@ const authCompat = {
         const success = encodeURIComponent(options?.redirectTo || window.location.origin + '/auth/callback');
         const failure = encodeURIComponent(window.location.origin + '/login');
         const scopes = encodeURIComponent('openid email profile');
+        // Маркер ставим до редиректа: после возврата с OAuth /auth/callback должен проверить сессию
+        setSessionHint(true);
         window.location.href = endpoint + '/account/sessions/oauth2/google?project=' + project + '&success=' + success + '&failure=' + failure;
       }
       return { data: {}, error: null };
@@ -317,6 +352,7 @@ const authCompat = {
   },
   signOut: async () => {
     try { const acc = getAccount(); await acc.deleteSession('current'); } catch {}
+    setSessionHint(false);
     currentSession = null;
     notifyAuthListeners('SIGNED_OUT');
   },
@@ -358,7 +394,7 @@ export function getAppwrite(): AppwriteCompat {
 }
 
 export async function restoreCrossDomainSession(): Promise<boolean> {
-  return !!(await getSessionFromAccount());
+  return !!(await probeSessionFromAccount());
 }
 
 export type AppwriteClient = AppwriteCompat;
